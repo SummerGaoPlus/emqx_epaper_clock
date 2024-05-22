@@ -1,0 +1,39 @@
+---
+
+name: Keep master green
+
+on:
+  schedule:
+    # run hourly
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      ref:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  rerun-failed-jobs:
+    if: github.repository_owner == 'emqx'
+    runs-on: ubuntu-22.04
+    permissions:
+      checks: read
+      actions: write
+    steps:
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+        with:
+          ref: ${{ github.event.inputs.ref || 'master' }}
+
+      - name: run script
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          gh api --method GET -f head_sha=$(git rev-parse HEAD) -f status=completed -f exclude_pull_requests=true /repos/${GITHUB_REPO}/actions/runs > runs.json
+          for id in $(jq -r '.workflow_runs[] | select((."conclusion" == "failure") and (."name" != "Keep master green") and .run_attempt < 3) | .id' runs.json); do
+            echo "rerun https://github.com/${GITHUB_REPO}/actions/runs/$id"
+            gh api --method POST /repos/${GITHUB_REPO}/actions/runs/$id/rerun-failed-jobs || true
+          done

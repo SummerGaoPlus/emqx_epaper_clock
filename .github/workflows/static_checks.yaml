@@ -1,0 +1,48 @@
+name: Static checks
+
+concurrency:
+  group: static-checks-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_call:
+    inputs:
+      builder:
+        required: true
+        type: string
+      ct-matrix:
+        required: true
+        type: string
+
+env:
+  IS_CI: "yes"
+
+permissions:
+  contents: read
+
+jobs:
+  static_checks:
+    runs-on: ${{ github.repository_owner == 'emqx' && fromJSON('["self-hosted","ephemeral","linux","x64"]') || 'ubuntu-22.04' }}
+    name: "static_checks (${{ matrix.profile }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(inputs.ct-matrix) }}
+    container: "ghcr.io/emqx/emqx-builder/${{ matrix.builder }}:${{ matrix.elixir }}-${{ matrix.otp }}-ubuntu22.04"
+    steps:
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: ${{ matrix.profile }}
+      - name: extract artifact
+        run: |
+          unzip -o -q ${{ matrix.profile }}.zip
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+        with:
+          path: "emqx_dialyzer_${{ matrix.otp }}_plt"
+          key: rebar3-dialyzer-plt-${{ matrix.profile }}-${{ matrix.otp }}-${{ hashFiles('rebar.*', 'apps/*/rebar.*') }}
+          restore-keys: |
+            rebar3-dialyzer-plt-${{ matrix.profile }}-${{ matrix.otp }}-
+      - run: cat .env | tee -a $GITHUB_ENV
+      - name: run static checks
+        run: make static_checks

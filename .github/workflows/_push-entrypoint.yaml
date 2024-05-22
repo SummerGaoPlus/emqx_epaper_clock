@@ -1,0 +1,204 @@
+name: Push Entrypoint
+
+concurrency:
+  group: push-entrypoint-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'e*'
+    branches:
+      - 'master'
+      - 'release-5[0-9]'
+      - 'ci/**'
+  workflow_dispatch:
+    inputs:
+      ref:
+        required: false
+
+env:
+  IS_CI: 'yes'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    container: 'ghcr.io/emqx/emqx-builder/5.3-5:1.15.7-26.2.1-2-ubuntu22.04'
+    outputs:
+      profile: ${{ steps.parse-git-ref.outputs.profile }}
+      release: ${{ steps.parse-git-ref.outputs.release }}
+      latest: ${{ steps.parse-git-ref.outputs.latest }}
+      ct-matrix: ${{ steps.matrix.outputs.ct-matrix }}
+      ct-host: ${{ steps.matrix.outputs.ct-host }}
+      ct-docker: ${{ steps.matrix.outputs.ct-docker }}
+      builder: 'ghcr.io/emqx/emqx-builder/5.3-5:1.15.7-26.2.1-2-ubuntu22.04'
+      builder_vsn: '5.3-5'
+      otp_vsn: '26.2.1-2'
+      elixir_vsn: '1.15.7'
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+      - name: Work around https://github.com/actions/checkout/issues/766
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Detect emqx profile
+        id: parse-git-ref
+        run: |
+          JSON="$(./scripts/parse-git-ref.sh $GITHUB_REF)"
+          PROFILE=$(echo "$JSON" | jq -cr '.profile')
+          RELEASE=$(echo "$JSON" | jq -cr '.release')
+          LATEST=$(echo "$JSON"  | jq -cr '.latest')
+          echo "profile=$PROFILE" | tee -a $GITHUB_OUTPUT
+          echo "release=$RELEASE" | tee -a $GITHUB_OUTPUT
+          echo "latest=$LATEST"   | tee -a $GITHUB_OUTPUT
+      - name: Build matrix
+        id: matrix
+        run: |
+          APPS="$(./scripts/find-apps.sh --ci)"
+          MATRIX="$(echo "${APPS}" | jq -c '
+            [
+              (.[] | select(.profile == "emqx") | . + {
+                builder: "5.3-5",
+                otp: "26.2.1-2",
+                elixir: "1.15.7"
+              }),
+              (.[] | select(.profile == "emqx-enterprise") | . + {
+                builder: "5.3-5",
+                otp: ["26.2.1-2"][],
+                elixir: "1.15.7"
+              })
+            ]
+          ')"
+          echo "${MATRIX}" | jq
+          CT_MATRIX="$(echo "${MATRIX}" | jq -c 'map({profile, builder, otp, elixir}) | unique')"
+          CT_HOST="$(echo "${MATRIX}"   | jq -c 'map(select(.runner == "host"))')"
+          CT_DOCKER="$(echo "${MATRIX}" | jq -c 'map(select(.runner == "docker"))')"
+          echo "ct-matrix=${CT_MATRIX}" | tee -a $GITHUB_OUTPUT
+          echo "ct-host=${CT_HOST}"     | tee -a $GITHUB_OUTPUT
+          echo "ct-docker=${CT_DOCKER}" | tee -a $GITHUB_OUTPUT
+
+  build_packages:
+    if: needs.prepare.outputs.release == 'true'
+    needs:
+      - prepare
+    uses: ./.github/workflows/build_packages.yaml
+    with:
+      profile: ${{ needs.prepare.outputs.profile }}
+      publish: true
+      otp_vsn: ${{ needs.prepare.outputs.otp_vsn }}
+      elixir_vsn: ${{ needs.prepare.outputs.elixir_vsn }}
+      builder_vsn: ${{ needs.prepare.outputs.builder_vsn }}
+    secrets: inherit
+
+  build_and_push_docker_images:
+    if: needs.prepare.outputs.release == 'true'
+    needs:
+      - prepare
+    uses: ./.github/workflows/build_and_push_docker_images.yaml
+    with:
+      profile: ${{ needs.prepare.outputs.profile }}
+      publish: true
+      latest: ${{ needs.prepare.outputs.latest }}
+      # TODO: revert this back to needs.prepare.outputs.otp_vsn when OTP 26 bug is fixed
+      otp_vsn: 25.3.2-2
+      elixir_vsn: ${{ needs.prepare.outputs.elixir_vsn }}
+      builder_vsn: ${{ needs.prepare.outputs.builder_vsn }}
+    secrets: inherit
+
+  build_slim_packages:
+    if: needs.prepare.outputs.release != 'true'
+    needs:
+      - prepare
+    uses: ./.github/workflows/build_slim_packages.yaml
+    with:
+      builder: ${{ needs.prepare.outputs.builder }}
+      builder_vsn: ${{ needs.prepare.outputs.builder_vsn }}
+      otp_vsn: ${{ needs.prepare.outputs.otp_vsn }}
+      elixir_vsn: ${{ needs.prepare.outputs.elixir_vsn }}
+
+  compile:
+    if: needs.prepare.outputs.release != 'true'
+    runs-on: ${{ endsWith(github.repository, '/emqx') && 'ubuntu-22.04' || fromJSON('["self-hosted","ephemeral","linux","x64"]') }}
+    container: ${{ needs.prepare.outputs.builder }}
+    needs:
+      - prepare
+    strategy:
+      matrix:
+        profile:
+          - emqx
+          - emqx-enterprise
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+      - name: Work around https://github.com/actions/checkout/issues/766
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - id: compile
+        env:
+          PROFILE: ${{ matrix.profile }}
+          ENABLE_COVER_COMPILE: 1
+        run: |
+          make $PROFILE
+          echo "PROFILE=${PROFILE}" | tee -a .env
+          echo "PKG_VSN=$(./pkg-vsn.sh ${PROFILE})" | tee -a .env
+          zip -ryq -x@.github/workflows/.zipignore $PROFILE.zip .
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: ${{ matrix.profile }}
+          path: ${{ matrix.profile }}.zip
+          retention-days: 1
+
+  run_emqx_app_tests:
+    needs:
+      - prepare
+      - compile
+    uses: ./.github/workflows/run_emqx_app_tests.yaml
+    with:
+      builder: ${{ needs.prepare.outputs.builder }}
+      before_ref: ${{ github.event.before }}
+      after_ref: ${{ github.sha }}
+
+  run_test_cases:
+    if: needs.prepare.outputs.release != 'true'
+    needs:
+      - prepare
+      - compile
+    uses: ./.github/workflows/run_test_cases.yaml
+    with:
+      builder: ${{ needs.prepare.outputs.builder }}
+      ct-matrix: ${{ needs.prepare.outputs.ct-matrix }}
+      ct-host: ${{ needs.prepare.outputs.ct-host }}
+      ct-docker: ${{ needs.prepare.outputs.ct-docker }}
+
+  run_conf_tests:
+    if: needs.prepare.outputs.release != 'true'
+    needs:
+      - prepare
+      - compile
+    uses: ./.github/workflows/run_conf_tests.yaml
+    with:
+      builder: ${{ needs.prepare.outputs.builder }}
+
+  static_checks:
+    if: needs.prepare.outputs.release != 'true'
+    needs:
+      - prepare
+      - compile
+    uses: ./.github/workflows/static_checks.yaml
+    with:
+      builder: ${{ needs.prepare.outputs.builder }}
+      ct-matrix: ${{ needs.prepare.outputs.ct-matrix }}

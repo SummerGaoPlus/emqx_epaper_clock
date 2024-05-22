@@ -1,0 +1,12 @@
+{application, emqx_connector_aggregator, [
+    {description, "EMQX Enterprise Connector Data Aggregator"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {env, []},
+    {modules, []},
+    {links, []}
+]}.

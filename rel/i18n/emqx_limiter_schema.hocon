@@ -1,0 +1,34 @@
+emqx_limiter_schema {
+
+max_conn_rate.desc:
+"""Maximum connection rate.<br/>
+This is used to limit the connection rate for this node.
+Once the limit is reached, new connections will be deferred or refused.<br/>
+For example:<br/>
+- <code>1000/s</code> :: Only accepts 1000 connections per second<br/>
+- <code>1000/10s</code> :: Only accepts 1000 connections every 10 seconds."""
+max_conn_rate.label:
+"""Maximum Connection Rate"""
+
+messages_rate.desc:
+"""Messages publish rate.<br/>
+This is used to limit the inbound message numbers for this node.
+Once the limit is reached, the restricted client will slow down and even be hung for a while.<br/>
+For example:<br/>
+- <code>500/s</code> :: Only the first 500 messages are sent per second and other messages are buffered.<br/>
+- <code>500/10s</code> :: Only the first 500 messages are sent even 10 second and other messages are buffered."""
+messages_rate.label:
+"""Messages Publish Rate"""
+
+bytes_rate.desc:
+"""Data publish rate.<br/>
+This is used to limit the inbound bytes rate for this node.
+Once the limit is reached, the restricted client will slow down and even be hung for a while.<br/>
+The unit of the bytes could be:KB MB GB.<br/>
+For example:<br/>
+- <code>500KB/s</code> :: Only the first 500 kilobytes are sent per second and other messages are buffered.<br/>
+- <code>500MB/10s</code> :: Only the first 500 megabytes are sent even 10 second and other messages are buffered."""
+bytes_rate.label:
+"""Data Publish Rate"""
+
+}

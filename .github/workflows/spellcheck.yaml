@@ -1,0 +1,28 @@
+name: Spellcheck
+
+concurrency:
+  group: spellcheck-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  spellcheck:
+    strategy:
+      matrix:
+        profile:
+        - emqx
+        - emqx-enterprise
+    runs-on: ${{ endsWith(github.repository, '/emqx') && 'ubuntu-22.04' || fromJSON('["self-hosted","ephemeral","linux","x64"]') }}
+    steps:
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          pattern: "${{ matrix.profile }}-schema-dump-*-x64"
+          merge-multiple: true
+      - name: Run spellcheck
+        run: |
+          bash scripts/spellcheck/spellcheck.sh _build/docgen/${{ matrix.profile }}/schema-en.json

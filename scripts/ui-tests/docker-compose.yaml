@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  emqx:
+    image: ${_EMQX_DOCKER_IMAGE_TAG:-emqx/emqx:latest}
+    environment:
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: admin
+
+  selenium:
+    shm_size: '2gb'
+    image: ghcr.io/emqx/selenium-chrome:latest
+    environment:
+      EMQX_NAME: ${EMQX_NAME}
+      EMQX_COMMUNITY_VERSION: ${EMQX_VERSION}
+      EMQX_ENTERPRISE_VERSION: ${EMQX_ENTERPRISE_VERSION}
+    volumes:
+      - ./:/app
+    depends_on:
+      - emqx
+    command: python3 -m pytest --dashboard-host emqx --dashboard-port 18083
