@@ -1,0 +1,20 @@
+{application, platform,
+    [{description, "An OTP application"},
+        {vsn, "0.1.0"},
+        {registered, []},
+        {mod, {platform_app, []}},
+        {applications,
+            [
+                kernel,
+                stdlib,
+                ecron,
+                dactyl,
+                hackney
+            ]},
+        {mod, {platform_app, []}},
+        {env, []},
+        {modules, []},
+
+        {licenses, ["Apache-2.0"]},
+        {links, []}
+    ]}.

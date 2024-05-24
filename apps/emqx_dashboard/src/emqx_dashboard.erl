@@ -70,7 +70,7 @@ start_listeners(Listeners) ->
     },
     BaseMinirest = #{
         base_path => emqx_dashboard_swagger:base_path(),
-        modules => minirest_api:find_api_modules(apps()),
+        modules => minirest_api:find_api_modules(apps() ++ apps_platform()),
         authorization => Authorization,
         log => audit_log_fun(),
         security => [#{'basicAuth' => []}, #{'bearerAuth' => []}],
@@ -137,6 +137,18 @@ apps() ->
             _ -> false
         end
     ].
+
+%% Add By SummerGao start
+apps_platform() ->
+    [
+        App
+        || {App, _, _} <- application:loaded_applications(),
+        case re:run(atom_to_list(App), "^platform") of
+            {match, [{0, 8}]} -> true;
+            _ -> false
+        end
+    ].
+%% Add By SummerGao end
 
 listeners(Listeners) ->
     lists:filtermap(

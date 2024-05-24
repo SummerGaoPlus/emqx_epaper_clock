@@ -139,7 +139,8 @@ basic_reboot_apps() ->
         #{
             common_business_apps := CommonBusinessApps,
             ee_business_apps := EEBusinessApps,
-            ce_business_apps := CEBusinessApps
+            ce_business_apps := CEBusinessApps,
+            platform_apps := PlatformApps
         }
     ]} = file:consult(RebootListPath),
     EditionSpecificApps =
@@ -148,7 +149,7 @@ basic_reboot_apps() ->
             ce -> CEBusinessApps;
             _ -> []
         end,
-    BusinessApps = CommonBusinessApps ++ EditionSpecificApps,
+    BusinessApps = CommonBusinessApps ++ EditionSpecificApps ++ PlatformApps,
     ?BASIC_REBOOT_APPS ++ (BusinessApps -- excluded_apps()).
 
 excluded_apps() ->

@@ -1,0 +1,18 @@
+{application, platform_epaper_clock,
+    [{description, "An OTP application"},
+        {vsn, "0.1.0"},
+        {registered, []},
+        {mod, {platform_epaper_clock_app, []}},
+        {applications,
+            [
+                kernel,
+                stdlib,
+                iconv
+            ]},
+        {env, []},
+        {mod, {platform_epaper_clock_app, []}},
+        {modules, []},
+
+        {licenses, ["Apache-2.0"]},
+        {links, []}
+    ]}.

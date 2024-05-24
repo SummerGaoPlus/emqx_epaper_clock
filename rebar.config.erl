@@ -412,7 +412,8 @@ relx_apps(ReleaseType, Edition) ->
             system_apps := SystemApps,
             common_business_apps := CommonBusinessApps,
             ee_business_apps := EEBusinessApps,
-            ce_business_apps := CEBusinessApps
+            ce_business_apps := CEBusinessApps,
+            platform_apps := PlatformApps
         }
     ]} = file:consult("apps/emqx_machine/priv/reboot_lists.eterm"),
     EditionSpecificApps =
@@ -420,7 +421,7 @@ relx_apps(ReleaseType, Edition) ->
             ee -> EEBusinessApps;
             ce -> CEBusinessApps
         end,
-    BusinessApps = CommonBusinessApps ++ EditionSpecificApps,
+    BusinessApps = CommonBusinessApps ++ EditionSpecificApps ++ PlatformApps,
     ExcludedApps = excluded_apps(ReleaseType),
     Apps =
         ([App || App <- SystemApps, not lists:member(App, ExcludedApps)] ++

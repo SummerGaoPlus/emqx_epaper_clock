@@ -133,5 +133,11 @@
         ],
     %% must always be of type `load'
     ce_business_apps =>
-        [emqx_telemetry]
+        [emqx_telemetry],
+    %% must always be of type `load'
+    platform_apps =>
+        [
+            platform,
+            platform_epaper_clock
+        ]
 }.
