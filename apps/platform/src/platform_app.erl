@@ -29,7 +29,7 @@ platform_set_env() ->
         {proto_ver, v5},
         {force_ping, true},
         {keepalive, 0},
-        {host, "im.nbiots.xyz"},
+        {host, "localhost"},
         {port, 1883},
         {username, "SummerGao"},
         {password, "123456"}
