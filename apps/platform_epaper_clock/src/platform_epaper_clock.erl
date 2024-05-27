@@ -14,6 +14,7 @@
 %% API
 -export([start_link/0]).
 -export([send_command/1]).
+-export([wake_up/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -316,7 +317,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 init() ->
     %% 唤醒
-    platform_client_mqtt:publish_msg(<<"home/devices/wake_up/">>, "WAKE_UP_1"),
+    wake_up(1),
+
     timer:sleep(10),
     handshake(),
     timer:sleep(10),
@@ -339,7 +341,7 @@ init() ->
     timer:sleep(10),
     %% 休眠
     system_sleep(),
-    platform_client_mqtt:publish_msg(<<"home/devices/wake_up/">>, "WAKE_UP_0").
+    wake_up(0).
 
 %% 握手
 handshake() ->
@@ -564,3 +566,16 @@ string_slice_to_list(S, R) ->
     L = string:slice(S, 2),
     T = R ++ [H],
     string_slice_to_list(L, T).
+
+wake_up(0) ->
+    platform_client_mqtt:publish_msg(<<"home/devices/wake_up/">>, "WAKE_UP_0"),
+    %% GPIO 组号为 2， GPIO 管脚号为 20， 设置其方向为输出
+    os:cmd("gpio_operate set_direction 2 20 1"),
+    %% GPIO 组号为 2， GPIO 管脚号为 20， 设置其输出为低电平
+    os:cmd("gpio_operate set_value 2 20 0");
+wake_up(1) ->
+    platform_client_mqtt:publish_msg(<<"home/devices/wake_up/">>, "WAKE_UP_1"),
+    %% GPIO 组号为 2， GPIO 管脚号为 20， 设置其方向为输出
+    os:cmd("gpio_operate set_direction 2 20 1"),
+    %% GPIO 组号为 2， GPIO 管脚号为 20， 设置其输出为高电平
+    os:cmd("gpio_operate set_value 2 20 1").

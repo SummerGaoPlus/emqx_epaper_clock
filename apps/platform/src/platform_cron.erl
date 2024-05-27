@@ -26,12 +26,12 @@
 -spec summergao_clock(list()) -> ok.
 summergao_clock(_Format) ->
     %% 唤醒
-    platform_client_mqtt:publish_msg(<<"home/devices/wake_up/">>, "WAKE_UP_1"),
+    platform_epaper_clock:wake_up(1),
     summergao_clock(),
     timer:sleep(10),
     %% 休眠
     platform_epaper_clock:send_command(system_sleep),
-    platform_client_mqtt:publish_msg(<<"home/devices/wake_up/">>, "WAKE_UP_0").
+    platform_epaper_clock:wake_up(0).
 summergao_clock() ->
     X = 10,
     Y = 10,
