@@ -63,7 +63,6 @@ platform_set_env() ->
     application:set_env(platform, crontab_jobs, [
         {summergao_clock, "@minutely", {platform_cron, summergao_clock, ["我是SummerGao的时钟，我每分钟刷新一次吖！"]}},
         {summergao_weather, "@hourly", {platform_cron, summergao_weather, [<<"101120101">>]}},
-%%      {summergao_ds18b20, "@minutely", {platform_cron, summergao_ds18b20, ["我是SummerGao的DS18B20传感器，我每分钟获取一次温度吖！"]}},
         {summergao_sensor_data_remote, "59 * * * * *", {platform_cron, summergao_sensor_data_remote, ["我是SummerGao的温湿度传感器，我每分钟的第59秒获取一次温湿度数据吖！"]}}
 
     ]),

@@ -1,3 +1,9 @@
+%%--------------------------------------------------------------------
+% Copyright (c) 2024-2025 SummerGao <summergao@vip.qq.com>
+% All rights reserved.
+% Distributed under the terms of the MIT License. See the LICENSE file.
+%%--------------------------------------------------------------------
+
 -module(platform_modbus_rtu_crc).
 -export([check_crc/1, calculate_crc/1, test/0]).
 

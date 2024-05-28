@@ -67,7 +67,6 @@ start_link() ->
 init([]) ->
     Options1 = [{clientid, integer_to_binary(erlang:system_time(nanosecond))}, {owner, self()}],
     {ok, Options2} = application:get_env(platform, mqtt),
-    io:format("Emqtt connect options : ~p~n",[Options1 ++ Options2]),
     {ok, ConnPid} = emqtt:start_link(Options1 ++ Options2),
     {ok, _Props} = emqtt:connect(ConnPid),
     {ok, #state{conn = ConnPid}}.

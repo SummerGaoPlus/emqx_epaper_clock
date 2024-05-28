@@ -15,7 +15,6 @@
 
 -export([summergao_clock/0, summergao_clock/1]).
 -export([summergao_weather/1]).
--export([summergao_ds18b20/1]).
 -export([summergao_sensor_data_remote/1]).
 
 %%%===================================================================
@@ -38,7 +37,6 @@ summergao_clock() ->
     L = ["NUM0.BMP", "NUM1.BMP", "NUM2.BMP", "NUM3.BMP", "NUM4.BMP", "NUM5.BMP", "NUM6.BMP", "NUM7.BMP", "NUM8.BMP", "NUM9.BMP"],
     WeekList = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"],
     {{Year, Month, Day}, {Hour, Minute, _Second}} = calendar:now_to_local_time(os:timestamp()),
-    io:format("Time : ~p~n", [{{Year, Month, Day}, {Hour, Minute, _Second}}]),
     platform_epaper_clock:send_command(clear_screen),
     %%  显示时间
     platform_epaper_clock:send_command({display_image, {X, Y}, lists:nth((Hour div 10) + 1, L)}),
@@ -105,10 +103,6 @@ summergao_clock() ->
     platform_epaper_clock:send_command({display_char, {200, 350}, "室内"}),
     %% 设置字号
     platform_epaper_clock:send_command(set_english_font_size_48),
-    %% 显示室内温度
-%%  T = platform_ds18b20:get_temp(),
-%%  TS = io_lib:format("~.2f℃", [T]),
-%% platform_epaper_clock:send_command( {display_char, {300, 340}, TS}),
     %% 显示室内温湿度
     if
         Minute rem 2 =:= 0 ->
@@ -165,16 +159,6 @@ summergao_weather(CityId) ->
 %% 定时获取温湿度传感数据
 summergao_sensor_data_remote(_Format) ->
     platform_modbus_sensor:get_sensor_data_remote().
-
-%% ds18b20传感器
-summergao_ds18b20(Format) ->
-    T = platform_ds18b20:get_temp(),
-    F = io_lib:format("办公室当前温度：~.2f℃", [T]),
-    U = unicode:characters_to_binary(F, utf8),
-    M = iconv:convert(<<"utf-8">>, <<"utf-8">>, U),
-    S = float_to_list(T, [{decimals, 2}]),
-    io:format(calendar:system_time_to_rfc3339(erlang:system_time(second)) ++ " : " ++ Format ++ "办公室当前温度：" ++ S ++ "\n"),
-    gen_server:call(platform_client_mqtt, {publish, <<"topic/sysz_sensor/ds18b20">>, M}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Manage Functions Begin
