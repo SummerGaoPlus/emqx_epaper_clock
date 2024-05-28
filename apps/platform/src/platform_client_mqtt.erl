@@ -65,7 +65,7 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    Options1 = [{clientid, integer_to_binary(erlang:system_time(nanosecond))}, {owner, self()}],
+    Options1 = [{clientid, emqx_utils:gen_id(16)}, {owner, self()}],
     {ok, Options2} = application:get_env(platform, mqtt),
     {ok, ConnPid} = emqtt:start_link(Options1 ++ Options2),
     {ok, _Props} = emqtt:connect(ConnPid),
